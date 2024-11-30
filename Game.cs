@@ -1,8 +1,8 @@
 ﻿using System.Text.Json;
 public class Game
 {
-    private List<int> playerPoints = new List<int>();
-    private List<int> computerPoints = new List<int>();
+    private Score playerScore = new Score();
+    private Score computerScore = new Score();
     private BowlingStatistics<GameHistory> gameHistory = new();
     private BowlingStatistics<PlayerFrequency> playerFrequency = new();
     private BowlingLane lane;
@@ -75,8 +75,8 @@ public class Game
                     : new StrongPower(strategy);
 
                 player.UpdateThrowSettings(power, power);
-                int playerScore = player.PerformThrow(lane);
-                playerPoints.Add(playerScore);
+                int playerThrowScore = player.PerformThrow(lane);
+                playerScore.AddPoints(playerThrowScore);
 
                 if (lane.AllPinsDown())
                 {
@@ -96,8 +96,8 @@ public class Game
             for (int i = 0; i < 2; i++)
             {
                 Thread.Sleep(1000);
-                int computerScore = computerPlayer.PerformThrow(lane);
-                computerPoints.Add(computerScore);
+                int computerThrowScore = computerPlayer.PerformThrow(lane);
+                computerScore.AddPoints(computerThrowScore);
 
                 if (lane.AllPinsDown())
                 {
@@ -107,10 +107,12 @@ public class Game
                     break;
                 }
             }
+
+            ShowFrameStatistics();
         }
 
         Console.WriteLine("\nGame over! 5 rounds completed.");
-        var (winner, playerTotal, computerTotal) = AnalyzeScores(playerPoints, computerPoints);
+        var (winner, playerTotal, computerTotal) = AnalyzeScores(playerScore, computerScore);
 
         Console.WriteLine("\nFinal Scores:");
         Console.WriteLine($"{player.Name}: {playerTotal} points");
@@ -151,10 +153,27 @@ public class Game
         string searchName = Console.ReadLine() ?? "";
         playerFrequency.ShowStatistics(searchName);
     }
-    private (string winner, int playerTotal, int computerTotal) AnalyzeScores(List<int> playerPoints, List<int> computerPoints)
+
+    private void ShowFrameStatistics()
     {
-        int playerTotal = playerPoints.Sum();
-        int computerTotal = computerPoints.Sum();
+        Console.WriteLine("\nFrame Statistics:");
+        Console.WriteLine($"{player.Name}'s frames:");
+        foreach (var frame in playerScore.GetFrameScores())
+        {
+            Console.WriteLine($"Frame {frame.frameNumber}: {frame.firstThrow} + {frame.secondThrow} = {frame.frameTotal}");
+        }
+
+        Console.WriteLine($"\n{computerPlayer.Name}'s frames:");
+        foreach (var frame in computerScore.GetFrameScores())
+        {
+            Console.WriteLine($"Frame {frame.frameNumber}: {frame.firstThrow} + {frame.secondThrow} = {frame.frameTotal}");
+        }
+    }
+
+    private (string winner, int playerTotal, int computerTotal) AnalyzeScores(Score playerScore, Score computerScore)
+    {
+        int playerTotal = playerScore.GetTotalScore();
+        int computerTotal = computerScore.GetTotalScore();
 
         string winner = playerTotal > computerTotal
             ? player.Name

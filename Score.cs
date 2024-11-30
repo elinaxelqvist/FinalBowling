@@ -4,11 +4,7 @@ using System.Linq;
 public class Score : IEnumerable<int>
 {
     private List<int> throwScores = new List<int>();
-
-    // KRAV #:
-    // 1: Iterator
-    // 2: Implementationen sker genom IEnumerator<int> som itererar över listan throwscores
-    // 3: Iteratorn används för att kunna gå igenom antalet poäng som tillkommer under spelet 
+    public int FrameCount => throwScores.Count / 2;  // Antal färdiga frames
 
     public IEnumerator<int> GetEnumerator()
     {
@@ -27,11 +23,18 @@ public class Score : IEnumerable<int>
 
     public int GetTotalScore() 
     {
-        int total = 0;
-        foreach (int score in throwScores)
+        return throwScores.Sum();
+    }
+
+    // Ny metod för att få poäng per frame
+    public IEnumerable<(int frameNumber, int firstThrow, int secondThrow, int frameTotal)> GetFrameScores()
+    {
+        for (int i = 0; i < throwScores.Count - 1; i += 2)
         {
-            total += score;
+            int frameNumber = (i / 2) + 1;
+            int firstThrow = throwScores[i];
+            int secondThrow = throwScores[i + 1];
+            yield return (frameNumber, firstThrow, secondThrow, firstThrow + secondThrow);
         }
-        return total;
     }
 }
