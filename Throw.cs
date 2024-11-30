@@ -15,6 +15,7 @@ public interface IStrategy
     string Name { get; }
     int Number { get; }
     (bool hit, string result) Spin();
+    int CalculateScore(BowlingLane lane);
 }
 
 public class WeakPower : IThrow
@@ -55,6 +56,12 @@ public class LeftHandSpin : IStrategy
         bool willHit = spinChance <= 70;
         return (willHit, willHit ? "Left Hand Spin" : "\u001b[91mOps! You slipped!\u001b[0m");
     }
+
+    public int CalculateScore(BowlingLane lane)
+    {
+        var pins = lane.GetPins();
+        return pins.Count(p => p.X < 2) * 3;
+    }
 }
 
 public class SuperSpin : IStrategy
@@ -69,6 +76,12 @@ public class SuperSpin : IStrategy
         bool willHit = spinChance <= 60;
         return (willHit, willHit ? "Super spin" : "\u001b[91mOh no... The ball went out of the lane..\u001b[0m");
     }
+
+    public int CalculateScore(BowlingLane lane)
+    {
+        var pins = lane.GetPins();
+        return pins.Count(p => p.Y == 3) * 4;
+    }
 }
 
 public class RightHandSpin : IStrategy
@@ -82,6 +95,12 @@ public class RightHandSpin : IStrategy
         int spinChance = random.Next(1, 101);
         bool willHit = spinChance <= 60;
         return (willHit, willHit ? "Right Spin" : "\u001b[91mWops, too much power! The ball got in another persons lane..\u001b[0m");
+    }
+
+    public int CalculateScore(BowlingLane lane)
+    {
+        var pins = lane.GetPins();
+        return pins.Count(p => p.X > 1) * 3;
     }
 }
 
