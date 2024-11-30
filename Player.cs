@@ -1,21 +1,18 @@
 ﻿public class Player
 {
-    private readonly ThrowHandler throwHandler = new ThrowHandler();
-    public string Name { get; private set; }
+    private readonly ThrowHandler throwHandler = new();
+    public string Name { get; }
     public IThrow PowerType { get; private set; }
-    public IThrow StrategyType { get; private set; }
 
-    public Player(string playerName, IThrow powerType, IThrow strategyType)  
+    public Player(string playerName, IThrow powerType)
     {
         Name = playerName;
         PowerType = powerType;
-        StrategyType = strategyType;
     }
 
-    public void UpdateThrowSettings(IThrow powerType, IThrow strategyType)
+    public void UpdateThrowSettings(IThrow powerType)
     {
         PowerType = powerType;
-        StrategyType = strategyType;
     }
 
     public int PerformThrow(BowlingLane lane)

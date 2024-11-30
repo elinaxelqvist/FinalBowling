@@ -1,12 +1,12 @@
 ﻿using System.Text.Json;
 public class Game
 {
-    private Score playerScore = new Score();
-    private Score computerScore = new Score();
-    private GameStatistics<GameHistory> gameStats;
+    private readonly Score playerScore = new();
+    private readonly Score computerScore = new();
+    private readonly GameStatistics<GameHistory> gameStats;
     private BowlingLane lane;
-    private Player player;
-    private ComputerPlayer computerPlayer;
+    private readonly Player player;
+    private readonly ComputerPlayer computerPlayer;
 
     public Game()
     {
@@ -17,9 +17,9 @@ public class Game
         lane = new BowlingLane();
         IStrategy defaultStrategy = new SuperSpin();
         IThrow defaultPower = new WeakPower(defaultStrategy);
-        player = new Player(playerName, defaultPower, defaultPower);
-        computerPlayer = new ComputerPlayer("Computer", defaultPower, defaultPower);
-        gameStats = new GameStatistics<GameHistory>("json");
+        player = new Player(playerName, defaultPower);
+        computerPlayer = new ComputerPlayer("Computer", defaultPower);
+        gameStats = new GameStatistics<GameHistory>();
     }
 
     public void PlayGame()
@@ -74,7 +74,7 @@ public class Game
                     ? new WeakPower(strategy)
                     : new StrongPower(strategy);
 
-                player.UpdateThrowSettings(power, power);
+                player.UpdateThrowSettings(power);
                 int playerThrowScore = player.PerformThrow(lane);
                 playerScore.AddPoints(playerThrowScore);
 

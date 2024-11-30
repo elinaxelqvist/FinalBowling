@@ -1,23 +1,20 @@
 ﻿using System.Runtime.CompilerServices;
 public class ComputerPlayer
 {
-    private readonly ThrowHandler throwHandler = new ThrowHandler();
-    private readonly Random random = new Random();
-    public string Name { get; private set; }
+    private readonly ThrowHandler throwHandler = new();
+    private readonly Random random = new();
+    public string Name { get; }
     public IThrow PowerType { get; private set; }
-    public IThrow StrategyType { get; private set; }
 
-    public ComputerPlayer(string name, IThrow powerType, IThrow strategyType)
+    public ComputerPlayer(string name, IThrow powerType)
     {
         Name = name;
         PowerType = powerType;
-        StrategyType = strategyType;
     }
 
-    public void UpdateThrowSettings(IThrow powerType, IThrow strategyType)
+    public void UpdateThrowSettings(IThrow powerType)
     {
         PowerType = powerType;
-        StrategyType = strategyType;
     }
 
     public int PerformThrow(BowlingLane lane)
