@@ -3,8 +3,7 @@ public class Game
 {
     private Score playerScore = new Score();
     private Score computerScore = new Score();
-    private BowlingStatistics<GameHistory> gameHistory = new();
-    private BowlingStatistics<PlayerFrequency> playerFrequency = new();
+    private GameStatistics<GameHistory> gameStats;
     private BowlingLane lane;
     private Player player;
     private ComputerPlayer computerPlayer;
@@ -20,6 +19,7 @@ public class Game
         IThrow defaultPower = new WeakPower(defaultStrategy);
         player = new Player(playerName, defaultPower, defaultPower);
         computerPlayer = new ComputerPlayer("Computer", defaultPower, defaultPower);
+        gameStats = new GameStatistics<GameHistory>("json");
     }
 
     public void PlayGame()
@@ -129,29 +129,18 @@ public class Game
         }
 
     
-        gameHistory.AddData(new GameHistory
+        gameStats.AddData(new GameHistory
         {
             PlayerName = player.Name,
             Score = playerTotal,
         });
 
-    
-        playerFrequency.AddData(new PlayerFrequency
-        {
-            PlayerName = player.Name,
-        });
-
-
-        Console.WriteLine("\nPress Enter to see more statistics...");
+        Console.WriteLine("\nPress Enter to see statistics...");
         Console.ReadLine();
         Console.Clear();
 
-
-        gameHistory.ShowStatistics();
-
-        Console.WriteLine("\nEnter player name to see their total games: ");
-        string searchName = Console.ReadLine() ?? "";
-        playerFrequency.ShowStatistics(searchName);
+        gameStats.ShowStatistics();
+        Console.WriteLine($"\n{player.Name} has played {gameStats.GetGamesPlayed(player.Name)} games");
     }
 
     private void ShowFrameStatistics()

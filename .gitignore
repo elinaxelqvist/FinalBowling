@@ -93,3 +93,6 @@ Desktop.ini
 .LSOverride
 .fake
 playerfrequency.json
+gamehistory.csv
+gamesplayed.json
+.gitignore

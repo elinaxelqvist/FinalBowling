@@ -15,46 +15,97 @@ public class GameHistory : IGameData
     public int Score { get; set; }
 }
 
-public class PlayerFrequency : IGameData
-{
-    public string PlayerName { get; set; }
-}
-
-public class BowlingStatistics<T> where T : IGameData
+public class GameStatistics<T> where T : IGameData
 {
     private List<T> statistics = new();
     private readonly string filePath;
+    private readonly string fileFormat;
+    private readonly string gamesPlayedPath;
 
-    public BowlingStatistics()
+    public GameStatistics(string format = "json")
     {
-        filePath = typeof(T) == typeof(GameHistory)
-            ? "gamehistory.json"
-            : "playerfrequency.json";
-
+        fileFormat = format.ToLower();
+        filePath = $"gamehistory.{fileFormat}";
+        gamesPlayedPath = "gamesplayed.json";
         LoadStatistics();
     }
 
-    // KRAV #:
-    // 1: Generics
-    // 2: Konceptet används genom en generisk klass 
-    // 3: Ovanför används Generics för att kunna ta in statistik oavsett vilken datatyp som statistiken består av
-    // den generiska klassen BowlingStatistics har en constraint som är IGameData 
+    private Dictionary<string, int> LoadGamesPlayed()
+    {
+        if (!File.Exists(gamesPlayedPath))
+            return new Dictionary<string, int>();
+
+        string json = File.ReadAllText(gamesPlayedPath);
+        return JsonSerializer.Deserialize<Dictionary<string, int>>(json) ?? new Dictionary<string, int>();
+    }
+
+    private void SaveGamesPlayed(Dictionary<string, int> gamesPlayed)
+    {
+        string json = JsonSerializer.Serialize(gamesPlayed, new JsonSerializerOptions { WriteIndented = true });
+        File.WriteAllText(gamesPlayedPath, json);
+    }
 
     private void LoadStatistics()
     {
-        if (File.Exists(filePath))
+        if (!File.Exists(filePath))
+            return;
+
+        string data = File.ReadAllText(filePath);
+        statistics = fileFormat switch
         {
-            string jsonData = File.ReadAllText(filePath);
-            statistics = JsonSerializer.Deserialize<List<T>>(jsonData) ?? new List<T>();
-        }
+            "json" => JsonSerializer.Deserialize<List<T>>(data) ?? new List<T>(),
+            "csv" => ParseCsv(data),
+            _ => new List<T>()
+        };
     }
-    
-    //Här har vi tagit hjälp av LLM för att få insperation och repetition av hur JSON filer används och seraliseras
-    private void SaveStatistics()                       
+
+    private void SaveStatistics()
     {
-        var options = new JsonSerializerOptions { WriteIndented = true };
-        string jsonData = JsonSerializer.Serialize(statistics, options);
-        File.WriteAllText(filePath, jsonData);
+        string data = fileFormat switch
+        {
+            "json" => JsonSerializer.Serialize(statistics, new JsonSerializerOptions { WriteIndented = true }),
+            "csv" => ToCsv(),
+            _ => string.Empty
+        };
+
+        File.WriteAllText(filePath, data);
+    }
+
+    private List<T> ParseCsv(string csvData)
+    {
+        var results = new List<T>();
+        var lines = csvData.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+        
+        foreach (var line in lines.Skip(1)) // Skip header
+        {
+            var values = line.Split(',');
+            if (values.Length >= 2 && typeof(T) == typeof(GameHistory))
+            {
+                results.Add((T)(IGameData)new GameHistory 
+                { 
+                    PlayerName = values[0], 
+                    Score = int.Parse(values[1]) 
+                });
+            }
+        }
+        
+        return results;
+    }
+
+    private string ToCsv()
+    {
+        if (!statistics.Any())
+            return "PlayerName,Score";
+
+        var lines = new List<string> { "PlayerName,Score" };
+        
+        if (typeof(T) == typeof(GameHistory))
+        {
+            lines.AddRange(statistics
+                .Select(s => $"{s.PlayerName},{((GameHistory)(object)s).Score}"));
+        }
+        
+        return string.Join("\n", lines);
     }
 
     public void AddData(T data)
@@ -62,39 +113,39 @@ public class BowlingStatistics<T> where T : IGameData
         if (typeof(T) == typeof(GameHistory))
         {
             statistics.Add(data);
-            statistics = statistics.OrderByDescending(s => (s as GameHistory).Score).Take(3).ToList();
+            statistics = statistics
+                .OrderByDescending(s => ((GameHistory)(object)s).Score)
+                .Take(3)
+                .ToList();
+            SaveStatistics();
+
+            var gamesPlayed = LoadGamesPlayed();
+            string playerName = data.PlayerName;
+            if (!gamesPlayed.ContainsKey(playerName))
+                gamesPlayed[playerName] = 0;
+            gamesPlayed[playerName]++;
+            SaveGamesPlayed(gamesPlayed);
         }
-        else if (typeof(T) == typeof(PlayerFrequency))
-        {
-            statistics.Add(data);
-        }
-        SaveStatistics();
     }
 
-    // KRAV #:
-    // 1: LINQ
-    // 2: LINQ används genom implementationen OrderByDescending samt COUNT
-    // 3: Vi använder LINQ för att skapa en high score lista, där vi tar fram topp 3 samt antalet gånger en spelare har spelat. 
-    //Detta blir menginsfullt eftersom att koden blir mer simpel än om vi inte hade använt LINQ
-
-
-    public void ShowStatistics(string playerName = "")
+    public void ShowStatistics()
     {
         if (typeof(T) == typeof(GameHistory))
         {
-            Console.WriteLine("\n TOP 3 SCORES OF ALL TIME ");
+            Console.WriteLine($"\nTOP 3 SCORES OF ALL TIME ({fileFormat.ToUpper()} format)");
             Console.WriteLine("--------------------------------");
             int rank = 1;
             foreach (var score in statistics)
             {
-                var history = score as GameHistory;
+                var history = (GameHistory)(object)score;
                 Console.WriteLine($"{rank++}. {history.PlayerName}: {history.Score} points");
             }
         }
-        else if (typeof(T) == typeof(PlayerFrequency))
-        {
-            var gamesPlayed = statistics.Count(s => s.PlayerName.Equals(playerName, StringComparison.OrdinalIgnoreCase));
-            Console.WriteLine($"\n{playerName} has played {gamesPlayed} games");
-        }
+    }
+
+    public int GetGamesPlayed(string playerName)
+    {
+        var gamesPlayed = LoadGamesPlayed();
+        return gamesPlayed.TryGetValue(playerName, out int count) ? count : 0;
     }
 }
