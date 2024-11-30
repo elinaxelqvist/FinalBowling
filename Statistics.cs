@@ -97,15 +97,10 @@ public class GameStatistics<T> where T : IGameData
         if (!statistics.Any())
             return "PlayerName,Score";
 
-        var lines = new List<string> { "PlayerName,Score" };
-        
-        if (typeof(T) == typeof(GameHistory))
-        {
-            lines.AddRange(statistics
-                .Select(s => $"{s.PlayerName},{((GameHistory)(object)s).Score}"));
-        }
-        
-        return string.Join("\n", lines);
+        return "PlayerName,Score\n" + string.Join("\n", 
+            statistics
+                .Where(s => s is GameHistory)  // Filtrerar först
+                .Select(s => $"{s.PlayerName},{((GameHistory)(object)s).Score}"));  // Transformerar sen
     }
 
     public void AddData(T data)
@@ -113,10 +108,13 @@ public class GameStatistics<T> where T : IGameData
         if (typeof(T) == typeof(GameHistory))
         {
             statistics.Add(data);
+            
             statistics = statistics
                 .OrderByDescending(s => ((GameHistory)(object)s).Score)
                 .Take(3)
-                .ToList();
+                .AsEnumerable()  // Behåller deferred execution
+                .ToList();  // Konverterar till List bara när vi måste spara
+            
             SaveStatistics();
 
             var gamesPlayed = LoadGamesPlayed();
@@ -132,8 +130,8 @@ public class GameStatistics<T> where T : IGameData
     {
         if (typeof(T) == typeof(GameHistory))
         {
-            Console.WriteLine($"\nTOP 3 SCORES OF ALL TIME ({fileFormat.ToUpper()} format)");
-            Console.WriteLine("--------------------------------");
+            Console.WriteLine($"\nTOP 3 SCORES OF ALL TIME");
+            Console.WriteLine("------------------------");
             int rank = 1;
             foreach (var score in statistics)
             {
