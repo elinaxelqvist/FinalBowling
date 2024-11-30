@@ -1,0 +1,1140 @@
+diff --git a/ComputerPlayer.cs b/ComputerPlayer.cs
+index 6980b19..87c76f0 100644
+--- a/ComputerPlayer.cs
++++ b/ComputerPlayer.cs
+@@ -1,45 +1,45 @@
+-﻿using System.Runtime.CompilerServices;
+-public class ComputerPlayer
+-{
+-    private readonly ThrowHandler throwHandler = new();
+-    private readonly Random random = new();
+-    public string Name { get; }
+-    public IThrow PowerType { get; private set; }
+-
+-    public ComputerPlayer(string name, IThrow powerType)
+-    {
+-        Name = name;
+-        PowerType = powerType;
+-    }
+-
+-    public void UpdateThrowSettings(IThrow powerType)
+-    {
+-        PowerType = powerType;
+-    }
+-
+-    public int PerformThrow(BowlingLane lane)
+-    {
+-        var pins = lane.GetPins();
+-        
+-        // Analysera kägelpositioner
+-        int leftPins = pins.Count(p => p.X < 2);
+-        int rightPins = pins.Count(p => p.X > 1);
+-        int backPins = pins.Count(p => p.Y == 3);
+-        
+-        // Välj strategi baserat på kägelpositioner
+-        IStrategy strategy = (leftPins, rightPins, backPins) switch
+-        {
+-            var (l, r, b) when b >= 2 => new SuperSpin(),      // Många käglor bak -> SuperSpin
+-            var (l, r, _) when l > r => new LeftHandSpin(),    // Fler käglor vänster -> LeftHandSpin
+-            var (l, r, _) when r > l => new RightHandSpin(),   // Fler käglor höger -> RightHandSpin
+-            _ => new SuperSpin()                               // Default om jämnt fördelat
+-        };
+-
+-        // Välj power baserat på antal kvarvarande käglor
+-        PowerType = pins.Count() <= 5 
+-            ? new WeakPower(strategy)    // Få käglor -> Weak för bättre kontroll
+-            : new StrongPower(strategy); // Många käglor -> Strong för maximal effekt
+-
+-        return throwHandler.PerformThrow(Name, PowerType, lane);
+-    }
+-}
++﻿using System.Runtime.CompilerServices;
++public class ComputerPlayer
++{
++    private readonly ThrowHandler throwHandler = new();
++    private readonly Random random = new();
++    public string Name { get; }
++    public IThrow PowerType { get; private set; }
++
++    public ComputerPlayer(string name, IThrow powerType)
++    {
++        Name = name;
++        PowerType = powerType;
++    }
++
++    public void UpdateThrowSettings(IThrow powerType)
++    {
++        PowerType = powerType;
++    }
++
++    public int PerformThrow(BowlingLane lane)
++    {
++        var pins = lane.GetPins();
++        
++        // Analysera kägelpositioner
++        int leftPins = pins.Count(p => p.X < 2);
++        int rightPins = pins.Count(p => p.X > 1);
++        int backPins = pins.Count(p => p.Y == 3);
++        
++        // Välj strategi baserat på kägelpositioner
++        IStrategy strategy = (leftPins, rightPins, backPins) switch
++        {
++            var (l, r, b) when b >= 2 => new SuperSpin(),      // Många käglor bak -> SuperSpin
++            var (l, r, _) when l > r => new LeftHandSpin(),    // Fler käglor vänster -> LeftHandSpin
++            var (l, r, _) when r > l => new RightHandSpin(),   // Fler käglor höger -> RightHandSpin
++            _ => new SuperSpin()                               // Default om jämnt fördelat
++        };
++
++        // Välj power baserat på antal kvarvarande käglor
++        PowerType = pins.Count() <= 5 
++            ? new WeakPower(strategy)    // Få käglor -> Weak för bättre kontroll
++            : new StrongPower(strategy); // Många käglor -> Strong för maximal effekt
++
++        return throwHandler.PerformThrow(Name, PowerType, lane);
++    }
++}
+diff --git a/Game.cs b/Game.cs
+index f5fb11a..2a2339d 100644
+--- a/Game.cs
++++ b/Game.cs
+@@ -1,175 +1,175 @@
+-﻿using System.Text.Json;
+-public class Game
+-{
+-    private readonly Score playerScore = new();
+-    private readonly Score computerScore = new();
+-    private readonly GameStatistics<GameHistory> gameStats;
+-    private BowlingLane lane;
+-    private readonly Player player;
+-    private readonly ComputerPlayer computerPlayer;
+-
+-    public Game()
+-    {
+-        Console.WriteLine("Welcome to Bowling Game!");
+-        Console.Write("Enter your name: ");
+-        string playerName = Console.ReadLine() ?? "Player";
+-
+-        lane = new BowlingLane();
+-        IStrategy defaultStrategy = new SuperSpin();
+-        IThrow defaultPower = new WeakPower(defaultStrategy);
+-        player = new Player(playerName, defaultPower);
+-        computerPlayer = new ComputerPlayer("Computer", defaultPower);
+-        gameStats = new GameStatistics<GameHistory>();
+-    }
+-
+-    public void PlayGame()
+-    {
+-        for (int round = 1; round <= 5; round++)
+-        {
+-            Console.ForegroundColor = ConsoleColor.Yellow;
+-            Console.WriteLine($"\nROUND {round}");
+-            Console.ResetColor();
+-
+-            lane = new BowlingLane();
+-            Console.ForegroundColor = ConsoleColor.Magenta;
+-            Console.WriteLine($"\n=== {player.Name}'s Turn ===");
+-            Console.ResetColor();
+-            lane.Print();
+-
+-            for (int i = 0; i < 2; i++)
+-            {
+-      
+-                Console.WriteLine("\nChoose your strategy:");
+-                Console.WriteLine("1. Left Hand Spin");
+-                Console.WriteLine("2. Super Spin, aiming for strike");
+-                Console.WriteLine("3. Right Hand Spin");
+-                Console.Write("Input (1-3): ");
+-
+-                int strategyChoice;
+-                while (!int.TryParse(Console.ReadLine(), out strategyChoice) || strategyChoice < 1 || strategyChoice > 3)
+-                {
+-                    Console.WriteLine("Invalid input. Please enter 1, 2 or 3:");
+-                }
+-
+-       
+-                Console.WriteLine("\nChoose your power:");
+-                Console.WriteLine("1. Weak");
+-                Console.WriteLine("2. Strong");
+-                Console.Write("Input (1-2): ");
+-
+-                int powerChoice;
+-                while (!int.TryParse(Console.ReadLine(), out powerChoice) || powerChoice < 1 || powerChoice > 2)
+-                {
+-                    Console.WriteLine("Invalid input. Please enter 1 or 2:");
+-                }
+-
+-                IStrategy strategy = strategyChoice switch
+-                {
+-                    1 => new LeftHandSpin(),
+-                    2 => new SuperSpin(),
+-                    _ => new RightHandSpin()
+-                };
+-
+-                IThrow power = powerChoice == 1
+-                    ? new WeakPower(strategy)
+-                    : new StrongPower(strategy);
+-
+-                player.UpdateThrowSettings(power);
+-                int playerThrowScore = player.PerformThrow(lane);
+-                playerScore.AddPoints(playerThrowScore);
+-
+-                if (lane.AllPinsDown())
+-                {
+-                    Console.ForegroundColor = ConsoleColor.Green;
+-                    Console.WriteLine($"All pins are down!");
+-                    Console.ResetColor();
+-                    break;
+-                }
+-            }
+-
+-            lane = new BowlingLane();
+-            Console.ForegroundColor = ConsoleColor.Blue;
+-            Console.WriteLine($"\n=== {computerPlayer.Name}'s Turn ===");
+-            Console.ResetColor();
+-            Console.WriteLine();
+-
+-            for (int i = 0; i < 2; i++)
+-            {
+-                Thread.Sleep(1000);
+-                int computerThrowScore = computerPlayer.PerformThrow(lane);
+-                computerScore.AddPoints(computerThrowScore);
+-
+-                if (lane.AllPinsDown())
+-                {
+-                    Console.ForegroundColor = ConsoleColor.Green;
+-                    Console.WriteLine($"All pins are down!");
+-                    Console.ResetColor();
+-                    break;
+-                }
+-            }
+-
+-            ShowFrameStatistics();
+-        }
+-
+-        Console.WriteLine("\nGame over! 5 rounds completed.");
+-        var (winner, playerTotal, computerTotal) = AnalyzeScores(playerScore, computerScore);
+-
+-        Console.WriteLine("\nFinal Scores:");
+-        Console.WriteLine($"{player.Name}: {playerTotal} points");
+-        Console.WriteLine($"Computer: {computerTotal} points");
+-
+-        if (winner == "Tie")
+-        {
+-            Console.WriteLine("\nIt's a tie!");
+-        }
+-        else
+-        {
+-            Console.WriteLine($"\n{winner} wins with {(winner == player.Name ? playerTotal : computerTotal)} points!");
+-            Console.WriteLine($"Winning margin: {Math.Abs(playerTotal - computerTotal)} points");
+-        }
+-
+-    
+-        gameStats.AddData(new GameHistory
+-        {
+-            PlayerName = player.Name,
+-            Score = playerTotal,
+-        });
+-
+-        Console.WriteLine("\nPress Enter to see statistics...");
+-        Console.ReadLine();
+-        Console.Clear();
+-
+-        gameStats.ShowStatistics();
+-        Console.WriteLine($"\n{player.Name} has played {gameStats.GetGamesPlayed(player.Name)} games");
+-    }
+-
+-    private void ShowFrameStatistics()
+-    {
+-        Console.WriteLine("\nFrame Statistics:");
+-        Console.WriteLine($"{player.Name}'s frames:");
+-        foreach (var frame in playerScore.GetFrameScores())
+-        {
+-            Console.WriteLine($"Frame {frame.frameNumber}: {frame.firstThrow} + {frame.secondThrow} = {frame.frameTotal}");
+-        }
+-
+-        Console.WriteLine($"\n{computerPlayer.Name}'s frames:");
+-        foreach (var frame in computerScore.GetFrameScores())
+-        {
+-            Console.WriteLine($"Frame {frame.frameNumber}: {frame.firstThrow} + {frame.secondThrow} = {frame.frameTotal}");
+-        }
+-    }
+-
+-    private (string winner, int playerTotal, int computerTotal) AnalyzeScores(Score playerScore, Score computerScore)
+-    {
+-        int playerTotal = playerScore.GetTotalScore();
+-        int computerTotal = computerScore.GetTotalScore();
+-
+-        string winner = playerTotal > computerTotal
+-            ? player.Name
+-            : playerTotal < computerTotal
+-                ? "Computer"
+-                : "Tie";
+-
+-        return (winner, playerTotal, computerTotal);
+-    }
++﻿using System.Text.Json;
++public class Game
++{
++    private readonly Score playerScore = new();
++    private readonly Score computerScore = new();
++    private readonly GameStatistics<GameHistory> gameStats;
++    private BowlingLane lane;
++    private readonly Player player;
++    private readonly ComputerPlayer computerPlayer;
++
++    public Game()
++    {
++        Console.WriteLine("Welcome to Bowling Game!");
++        Console.Write("Enter your name: ");
++        string playerName = Console.ReadLine() ?? "Player";
++
++        lane = new BowlingLane();
++        IStrategy defaultStrategy = new SuperSpin();
++        IThrow defaultPower = new WeakPower(defaultStrategy);
++        player = new Player(playerName, defaultPower);
++        computerPlayer = new ComputerPlayer("Computer", defaultPower);
++        gameStats = new GameStatistics<GameHistory>();
++    }
++
++    public void PlayGame()
++    {
++        for (int round = 1; round <= 5; round++)
++        {
++            Console.ForegroundColor = ConsoleColor.Yellow;
++            Console.WriteLine($"\nROUND {round}");
++            Console.ResetColor();
++
++            lane = new BowlingLane();
++            Console.ForegroundColor = ConsoleColor.Magenta;
++            Console.WriteLine($"\n=== {player.Name}'s Turn ===");
++            Console.ResetColor();
++            lane.Print();
++
++            for (int i = 0; i < 2; i++)
++            {
++      
++                Console.WriteLine("\nChoose your strategy:");
++                Console.WriteLine("1. Left Hand Spin");
++                Console.WriteLine("2. Super Spin, aiming for strike");
++                Console.WriteLine("3. Right Hand Spin");
++                Console.Write("Input (1-3): ");
++
++                int strategyChoice;
++                while (!int.TryParse(Console.ReadLine(), out strategyChoice) || strategyChoice < 1 || strategyChoice > 3)
++                {
++                    Console.WriteLine("Invalid input. Please enter 1, 2 or 3:");
++                }
++
++       
++                Console.WriteLine("\nChoose your power:");
++                Console.WriteLine("1. Weak");
++                Console.WriteLine("2. Strong");
++                Console.Write("Input (1-2): ");
++
++                int powerChoice;
++                while (!int.TryParse(Console.ReadLine(), out powerChoice) || powerChoice < 1 || powerChoice > 2)
++                {
++                    Console.WriteLine("Invalid input. Please enter 1 or 2:");
++                }
++
++                IStrategy strategy = strategyChoice switch
++                {
++                    1 => new LeftHandSpin(),
++                    2 => new SuperSpin(),
++                    _ => new RightHandSpin()
++                };
++
++                IThrow power = powerChoice == 1
++                    ? new WeakPower(strategy)
++                    : new StrongPower(strategy);
++
++                player.UpdateThrowSettings(power);
++                int playerThrowScore = player.PerformThrow(lane);
++                playerScore.AddPoints(playerThrowScore);
++
++                if (lane.AllPinsDown())
++                {
++                    Console.ForegroundColor = ConsoleColor.Green;
++                    Console.WriteLine($"All pins are down!");
++                    Console.ResetColor();
++                    break;
++                }
++            }
++
++            lane = new BowlingLane();
++            Console.ForegroundColor = ConsoleColor.Blue;
++            Console.WriteLine($"\n=== {computerPlayer.Name}'s Turn ===");
++            Console.ResetColor();
++            Console.WriteLine();
++
++            for (int i = 0; i < 2; i++)
++            {
++                Thread.Sleep(1000);
++                int computerThrowScore = computerPlayer.PerformThrow(lane);
++                computerScore.AddPoints(computerThrowScore);
++
++                if (lane.AllPinsDown())
++                {
++                    Console.ForegroundColor = ConsoleColor.Green;
++                    Console.WriteLine($"All pins are down!");
++                    Console.ResetColor();
++                    break;
++                }
++            }
++
++            ShowFrameStatistics();
++        }
++
++        Console.WriteLine("\nGame over! 5 rounds completed.");
++        var (winner, playerTotal, computerTotal) = AnalyzeScores(playerScore, computerScore);
++
++        Console.WriteLine("\nFinal Scores:");
++        Console.WriteLine($"{player.Name}: {playerTotal} points");
++        Console.WriteLine($"Computer: {computerTotal} points");
++
++        if (winner == "Tie")
++        {
++            Console.WriteLine("\nIt's a tie!");
++        }
++        else
++        {
++            Console.WriteLine($"\n{winner} wins with {(winner == player.Name ? playerTotal : computerTotal)} points!");
++            Console.WriteLine($"Winning margin: {Math.Abs(playerTotal - computerTotal)} points");
++        }
++
++    
++        gameStats.AddData(new GameHistory
++        {
++            PlayerName = player.Name,
++            Score = playerTotal,
++        });
++
++        Console.WriteLine("\nPress Enter to see statistics...");
++        Console.ReadLine();
++        Console.Clear();
++
++        gameStats.ShowStatistics();
++        Console.WriteLine($"\n{player.Name} has played {gameStats.GetGamesPlayed(player.Name)} games");
++    }
++
++    private void ShowFrameStatistics()
++    {
++        Console.WriteLine("\nFrame Statistics:");
++        Console.WriteLine($"{player.Name}'s frames:");
++        foreach (var frame in playerScore.GetFrameScores())
++        {
++            Console.WriteLine($"Frame {frame.frameNumber}: {frame.firstThrow} + {frame.secondThrow} = {frame.frameTotal}");
++        }
++
++        Console.WriteLine($"\n{computerPlayer.Name}'s frames:");
++        foreach (var frame in computerScore.GetFrameScores())
++        {
++            Console.WriteLine($"Frame {frame.frameNumber}: {frame.firstThrow} + {frame.secondThrow} = {frame.frameTotal}");
++        }
++    }
++
++    private (string winner, int playerTotal, int computerTotal) AnalyzeScores(Score playerScore, Score computerScore)
++    {
++        int playerTotal = playerScore.GetTotalScore();
++        int computerTotal = computerScore.GetTotalScore();
++
++        string winner = playerTotal > computerTotal
++            ? player.Name
++            : playerTotal < computerTotal
++                ? "Computer"
++                : "Tie";
++
++        return (winner, playerTotal, computerTotal);
++    }
+ }
+\ No newline at end of file
+diff --git a/Player.cs b/Player.cs
+index 29d6e98..88a4b53 100644
+--- a/Player.cs
++++ b/Player.cs
+@@ -1,22 +1,22 @@
+-﻿public class Player
+-{
+-    private readonly ThrowHandler throwHandler = new();
+-    public string Name { get; }
+-    public IThrow PowerType { get; private set; }
+-
+-    public Player(string playerName, IThrow powerType)
+-    {
+-        Name = playerName;
+-        PowerType = powerType;
+-    }
+-
+-    public void UpdateThrowSettings(IThrow powerType)
+-    {
+-        PowerType = powerType;
+-    }
+-
+-    public int PerformThrow(BowlingLane lane)
+-    {
+-        return throwHandler.PerformThrow(Name, PowerType, lane);
+-    }
++﻿public class Player
++{
++    private readonly ThrowHandler throwHandler = new();
++    public string Name { get; }
++    public IThrow PowerType { get; private set; }
++
++    public Player(string playerName, IThrow powerType)
++    {
++        Name = playerName;
++        PowerType = powerType;
++    }
++
++    public void UpdateThrowSettings(IThrow powerType)
++    {
++        PowerType = powerType;
++    }
++
++    public int PerformThrow(BowlingLane lane)
++    {
++        return throwHandler.PerformThrow(Name, PowerType, lane);
++    }
+ }
+\ No newline at end of file
+diff --git a/Score.cs b/Score.cs
+index 1c745a5..af1a285 100644
+--- a/Score.cs
++++ b/Score.cs
+@@ -1,40 +1,40 @@
+-﻿using System.Collections.Generic;
+-using System.Linq;
+-
+-public class Score : IEnumerable<int>
+-{
+-    private List<int> throwScores = new List<int>();
+-    public int FrameCount => throwScores.Count / 2;  // Antal färdiga frames
+-
+-    public IEnumerator<int> GetEnumerator()
+-    {
+-        return throwScores.GetEnumerator();
+-    }
+-
+-    System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator()
+-    {
+-        return GetEnumerator();
+-    }
+-
+-    public void AddPoints(int points)
+-    {
+-        throwScores.Add(points);
+-    }
+-
+-    public int GetTotalScore() 
+-    {
+-        return throwScores.Sum();
+-    }
+-
+-    // Ny metod för att få poäng per frame
+-    public IEnumerable<(int frameNumber, int firstThrow, int secondThrow, int frameTotal)> GetFrameScores()
+-    {
+-        for (int i = 0; i < throwScores.Count - 1; i += 2)
+-        {
+-            int frameNumber = (i / 2) + 1;
+-            int firstThrow = throwScores[i];
+-            int secondThrow = throwScores[i + 1];
+-            yield return (frameNumber, firstThrow, secondThrow, firstThrow + secondThrow);
+-        }
+-    }
++﻿using System.Collections.Generic;
++using System.Linq;
++
++public class Score : IEnumerable<int>
++{
++    private List<int> throwScores = new List<int>();
++    public int FrameCount => throwScores.Count / 2;  // Antal färdiga frames
++
++    public IEnumerator<int> GetEnumerator()
++    {
++        return throwScores.GetEnumerator();
++    }
++
++    System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator()
++    {
++        return GetEnumerator();
++    }
++
++    public void AddPoints(int points)
++    {
++        throwScores.Add(points);
++    }
++
++    public int GetTotalScore() 
++    {
++        return throwScores.Sum();
++    }
++
++    // Ny metod för att få poäng per frame
++    public IEnumerable<(int frameNumber, int firstThrow, int secondThrow, int frameTotal)> GetFrameScores()
++    {
++        for (int i = 0; i < throwScores.Count - 1; i += 2)
++        {
++            int frameNumber = (i / 2) + 1;
++            int firstThrow = throwScores[i];
++            int secondThrow = throwScores[i + 1];
++            yield return (frameNumber, firstThrow, secondThrow, firstThrow + secondThrow);
++        }
++    }
+ }
+\ No newline at end of file
+diff --git a/Statistics.cs b/Statistics.cs
+index ecb6de5..f01262c 100644
+--- a/Statistics.cs
++++ b/Statistics.cs
+@@ -1,149 +1,149 @@
+-﻿using System;
+-using System.Collections.Generic;
+-using System.IO;
+-using System.Linq;
+-using System.Text.Json;
+-
+-public interface IGameData
+-{
+-    string PlayerName { get; }
+-}
+-
+-public class GameHistory : IGameData
+-{
+-    public string PlayerName { get; set; }
+-    public int Score { get; set; }
+-}
+-
+-public class GameStatistics<T> where T : IGameData
+-{
+-    private List<T> statistics = new();
+-    private readonly string filePath;
+-    private readonly string fileFormat;
+-    private readonly string gamesPlayedPath;
+-
+-    public GameStatistics(string format = "json")
+-    {
+-        fileFormat = format.ToLower();
+-        filePath = $"gamehistory.{fileFormat}";
+-        gamesPlayedPath = "gamesplayed.json";
+-        LoadStatistics();
+-    }
+-
+-    private Dictionary<string, int> LoadGamesPlayed()
+-    {
+-        if (!File.Exists(gamesPlayedPath))
+-            return new Dictionary<string, int>();
+-
+-        string json = File.ReadAllText(gamesPlayedPath);
+-        return JsonSerializer.Deserialize<Dictionary<string, int>>(json) ?? new Dictionary<string, int>();
+-    }
+-
+-    private void SaveGamesPlayed(Dictionary<string, int> gamesPlayed)
+-    {
+-        string json = JsonSerializer.Serialize(gamesPlayed, new JsonSerializerOptions { WriteIndented = true });
+-        File.WriteAllText(gamesPlayedPath, json);
+-    }
+-
+-    private void LoadStatistics()
+-    {
+-        if (!File.Exists(filePath))
+-            return;
+-
+-        string data = File.ReadAllText(filePath);
+-        statistics = fileFormat switch
+-        {
+-            "json" => JsonSerializer.Deserialize<List<T>>(data) ?? new List<T>(),
+-            "csv" => ParseCsv(data),
+-            _ => new List<T>()
+-        };
+-    }
+-
+-    private void SaveStatistics()
+-    {
+-        string data = fileFormat switch
+-        {
+-            "json" => JsonSerializer.Serialize(statistics, new JsonSerializerOptions { WriteIndented = true }),
+-            "csv" => ToCsv(),
+-            _ => string.Empty
+-        };
+-
+-        File.WriteAllText(filePath, data);
+-    }
+-
+-    private List<T> ParseCsv(string csvData)
+-    {
+-        var results = new List<T>();
+-        var lines = csvData.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+-        
+-        foreach (var line in lines.Skip(1)) // Skip header
+-        {
+-            var values = line.Split(',');
+-            if (values.Length >= 2 && typeof(T) == typeof(GameHistory))
+-            {
+-                results.Add((T)(IGameData)new GameHistory 
+-                { 
+-                    PlayerName = values[0], 
+-                    Score = int.Parse(values[1]) 
+-                });
+-            }
+-        }
+-        
+-        return results;
+-    }
+-
+-    private string ToCsv()
+-    {
+-        if (!statistics.Any())
+-            return "PlayerName,Score";
+-
+-        return "PlayerName,Score\n" + string.Join("\n", 
+-            statistics
+-                .Where(s => s is GameHistory)  // Filtrerar först
+-                .Select(s => $"{s.PlayerName},{((GameHistory)(object)s).Score}"));  // Transformerar sen
+-    }
+-
+-    public void AddData(T data)
+-    {
+-        if (typeof(T) == typeof(GameHistory))
+-        {
+-            statistics.Add(data);
+-            
+-            statistics = statistics
+-                .OrderByDescending(s => ((GameHistory)(object)s).Score)
+-                .Take(3)
+-                .AsEnumerable()  // Behåller deferred execution
+-                .ToList();  // Konverterar till List bara när vi måste spara
+-            
+-            SaveStatistics();
+-
+-            var gamesPlayed = LoadGamesPlayed();
+-            string playerName = data.PlayerName;
+-            if (!gamesPlayed.ContainsKey(playerName))
+-                gamesPlayed[playerName] = 0;
+-            gamesPlayed[playerName]++;
+-            SaveGamesPlayed(gamesPlayed);
+-        }
+-    }
+-
+-    public void ShowStatistics()
+-    {
+-        if (typeof(T) == typeof(GameHistory))
+-        {
+-            Console.WriteLine($"\nTOP 3 SCORES OF ALL TIME");
+-            Console.WriteLine("------------------------");
+-            int rank = 1;
+-            foreach (var score in statistics)
+-            {
+-                var history = (GameHistory)(object)score;
+-                Console.WriteLine($"{rank++}. {history.PlayerName}: {history.Score} points");
+-            }
+-        }
+-    }
+-
+-    public int GetGamesPlayed(string playerName)
+-    {
+-        var gamesPlayed = LoadGamesPlayed();
+-        return gamesPlayed.TryGetValue(playerName, out int count) ? count : 0;
+-    }
++﻿using System;
++using System.Collections.Generic;
++using System.IO;
++using System.Linq;
++using System.Text.Json;
++
++public interface IGameData
++{
++    string PlayerName { get; }
++}
++
++public class GameHistory : IGameData
++{
++    public string PlayerName { get; set; }
++    public int Score { get; set; }
++}
++
++public class GameStatistics<T> where T : IGameData
++{
++    private List<T> statistics = new();
++    private readonly string filePath;
++    private readonly string fileFormat;
++    private readonly string gamesPlayedPath;
++
++    public GameStatistics(string format = "json")
++    {
++        fileFormat = format.ToLower();
++        filePath = $"gamehistory.{fileFormat}";
++        gamesPlayedPath = "gamesplayed.json";
++        LoadStatistics();
++    }
++
++    private Dictionary<string, int> LoadGamesPlayed()
++    {
++        if (!File.Exists(gamesPlayedPath))
++            return new Dictionary<string, int>();
++
++        string json = File.ReadAllText(gamesPlayedPath);
++        return JsonSerializer.Deserialize<Dictionary<string, int>>(json) ?? new Dictionary<string, int>();
++    }
++
++    private void SaveGamesPlayed(Dictionary<string, int> gamesPlayed)
++    {
++        string json = JsonSerializer.Serialize(gamesPlayed, new JsonSerializerOptions { WriteIndented = true });
++        File.WriteAllText(gamesPlayedPath, json);
++    }
++
++    private void LoadStatistics()
++    {
++        if (!File.Exists(filePath))
++            return;
++
++        string data = File.ReadAllText(filePath);
++        statistics = fileFormat switch
++        {
++            "json" => JsonSerializer.Deserialize<List<T>>(data) ?? new List<T>(),
++            "csv" => ParseCsv(data),
++            _ => new List<T>()
++        };
++    }
++
++    private void SaveStatistics()
++    {
++        string data = fileFormat switch
++        {
++            "json" => JsonSerializer.Serialize(statistics, new JsonSerializerOptions { WriteIndented = true }),
++            "csv" => ToCsv(),
++            _ => string.Empty
++        };
++
++        File.WriteAllText(filePath, data);
++    }
++
++    private List<T> ParseCsv(string csvData)
++    {
++        var results = new List<T>();
++        var lines = csvData.Split('\n', StringSplitOptions.RemoveEmptyEntries);
++        
++        foreach (var line in lines.Skip(1)) // Skip header
++        {
++            var values = line.Split(',');
++            if (values.Length >= 2 && typeof(T) == typeof(GameHistory))
++            {
++                results.Add((T)(IGameData)new GameHistory 
++                { 
++                    PlayerName = values[0], 
++                    Score = int.Parse(values[1]) 
++                });
++            }
++        }
++        
++        return results;
++    }
++
++    private string ToCsv()
++    {
++        if (!statistics.Any())
++            return "PlayerName,Score";
++
++        return "PlayerName,Score\n" + string.Join("\n", 
++            statistics
++                .Where(s => s is GameHistory)  // Filtrerar först
++                .Select(s => $"{s.PlayerName},{((GameHistory)(object)s).Score}"));  // Transformerar sen
++    }
++
++    public void AddData(T data)
++    {
++        if (typeof(T) == typeof(GameHistory))
++        {
++            statistics.Add(data);
++            
++            statistics = statistics
++                .OrderByDescending(s => ((GameHistory)(object)s).Score)
++                .Take(3)
++                .AsEnumerable()  // Behåller deferred execution
++                .ToList();  // Konverterar till List bara när vi måste spara
++            
++            SaveStatistics();
++
++            var gamesPlayed = LoadGamesPlayed();
++            string playerName = data.PlayerName;
++            if (!gamesPlayed.ContainsKey(playerName))
++                gamesPlayed[playerName] = 0;
++            gamesPlayed[playerName]++;
++            SaveGamesPlayed(gamesPlayed);
++        }
++    }
++
++    public void ShowStatistics()
++    {
++        if (typeof(T) == typeof(GameHistory))
++        {
++            Console.WriteLine($"\nTOP 3 SCORES OF ALL TIME");
++            Console.WriteLine("------------------------");
++            int rank = 1;
++            foreach (var score in statistics)
++            {
++                var history = (GameHistory)(object)score;
++                Console.WriteLine($"{rank++}. {history.PlayerName}: {history.Score} points");
++            }
++        }
++    }
++
++    public int GetGamesPlayed(string playerName)
++    {
++        var gamesPlayed = LoadGamesPlayed();
++        return gamesPlayed.TryGetValue(playerName, out int count) ? count : 0;
++    }
+ }
+\ No newline at end of file
+diff --git a/Throw.cs b/Throw.cs
+index c4bc41b..2ab8b66 100644
+--- a/Throw.cs
++++ b/Throw.cs
+@@ -1,124 +1,124 @@
+-﻿using System;
+-using System.Drawing;
+-using System.Numerics;
+-
+-public interface IThrow
+-{
+-    IStrategy Strategy { get; }
+-    string Name { get; }
+-    string Description { get; }
+-    int Number { get; }
+-}
+-
+-public interface IStrategy
+-{
+-    string Name { get; }
+-    int Number { get; }
+-    (bool hit, string result) Spin();
+-    int CalculateScore(BowlingLane lane);
+-}
+-
+-public class WeakPower : IThrow
+-{
+-    public IStrategy Strategy { get; }
+-    public string Name => "Weak";
+-    public string Description => "Less power but more control";
+-    public int Number => 10;
+-
+-    public WeakPower(IStrategy strategy)
+-    {
+-        Strategy = strategy;
+-    }
+-}
+-
+-public class StrongPower : IThrow
+-{
+-    public IStrategy Strategy { get; }
+-    public string Name => "Strong";
+-    public string Description => "More power but less control";
+-    public int Number => 100;
+-
+-    public StrongPower(IStrategy strategy)
+-    {
+-        Strategy = strategy;
+-    }
+-}
+-
+-public class LeftHandSpin : IStrategy
+-{
+-    public string Name => "Left Hand Spin";
+-    public int Number => 0;
+-
+-    public (bool hit, string result) Spin()
+-    {
+-        Random random = new Random();
+-        int spinChance = random.Next(1, 101);
+-        bool willHit = spinChance <= 70;
+-        return (willHit, willHit ? "Left Hand Spin" : "\u001b[91mOps! You slipped!\u001b[0m");
+-    }
+-
+-    public int CalculateScore(BowlingLane lane)
+-    {
+-        var pins = lane.GetPins();
+-        return pins.Count(p => p.X < 2) * 3;
+-    }
+-}
+-
+-public class SuperSpin : IStrategy
+-{
+-    public string Name => "Super spin";
+-    public int Number => 50;
+-
+-    public (bool hit, string result) Spin()
+-    {
+-        Random random = new Random();
+-        int spinChance = random.Next(1, 101);
+-        bool willHit = spinChance <= 60;
+-        return (willHit, willHit ? "Super spin" : "\u001b[91mOh no... The ball went out of the lane..\u001b[0m");
+-    }
+-
+-    public int CalculateScore(BowlingLane lane)
+-    {
+-        var pins = lane.GetPins();
+-        return pins.Count(p => p.Y == 3) * 4;
+-    }
+-}
+-
+-public class RightHandSpin : IStrategy
+-{
+-    public string Name => "Right spin";
+-    public int Number => 100;
+-
+-    public (bool hit, string result) Spin()
+-    {
+-        Random random = new Random();
+-        int spinChance = random.Next(1, 101);
+-        bool willHit = spinChance <= 60;
+-        return (willHit, willHit ? "Right Spin" : "\u001b[91mWops, too much power! The ball got in another persons lane..\u001b[0m");
+-    }
+-
+-    public int CalculateScore(BowlingLane lane)
+-    {
+-        var pins = lane.GetPins();
+-        return pins.Count(p => p.X > 1) * 3;
+-    }
+-}
+-
+-public class ThrowHandler
+-{
+-    public int PerformThrow(string name, IThrow power, BowlingLane lane)
+-    {
+-        Console.WriteLine($"{name} is throwing with {power.Name} Power and {power.Strategy.Name}!");
+-        
+-        var (hit, result) = power.Strategy.Spin();
+-        if (!hit)
+-        {
+-            Console.WriteLine(result);
+-            return 0;
+-        }
+-
+-        int pinsDown = lane.MakeThrow(power.Number, power.Strategy.Number);
+-        Console.WriteLine($"Pins down this throw: {pinsDown}");
+-        return pinsDown;
+-    }
+-}
++﻿using System;
++using System.Drawing;
++using System.Numerics;
++
++public interface IThrow
++{
++    IStrategy Strategy { get; }
++    string Name { get; }
++    string Description { get; }
++    int Number { get; }
++}
++
++public interface IStrategy
++{
++    string Name { get; }
++    int Number { get; }
++    (bool hit, string result) Spin();
++    int CalculateScore(BowlingLane lane);
++}
++
++public class WeakPower : IThrow
++{
++    public IStrategy Strategy { get; }
++    public string Name => "Weak";
++    public string Description => "Less power but more control";
++    public int Number => 10;
++
++    public WeakPower(IStrategy strategy)
++    {
++        Strategy = strategy;
++    }
++}
++
++public class StrongPower : IThrow
++{
++    public IStrategy Strategy { get; }
++    public string Name => "Strong";
++    public string Description => "More power but less control";
++    public int Number => 100;
++
++    public StrongPower(IStrategy strategy)
++    {
++        Strategy = strategy;
++    }
++}
++
++public class LeftHandSpin : IStrategy
++{
++    public string Name => "Left Hand Spin";
++    public int Number => 0;
++
++    public (bool hit, string result) Spin()
++    {
++        Random random = new Random();
++        int spinChance = random.Next(1, 101);
++        bool willHit = spinChance <= 70;
++        return (willHit, willHit ? "Left Hand Spin" : "\u001b[91mOps! You slipped!\u001b[0m");
++    }
++
++    public int CalculateScore(BowlingLane lane)
++    {
++        var pins = lane.GetPins();
++        return pins.Count(p => p.X < 2) * 3;
++    }
++}
++
++public class SuperSpin : IStrategy
++{
++    public string Name => "Super spin";
++    public int Number => 50;
++
++    public (bool hit, string result) Spin()
++    {
++        Random random = new Random();
++        int spinChance = random.Next(1, 101);
++        bool willHit = spinChance <= 60;
++        return (willHit, willHit ? "Super spin" : "\u001b[91mOh no... The ball went out of the lane..\u001b[0m");
++    }
++
++    public int CalculateScore(BowlingLane lane)
++    {
++        var pins = lane.GetPins();
++        return pins.Count(p => p.Y == 3) * 4;
++    }
++}
++
++public class RightHandSpin : IStrategy
++{
++    public string Name => "Right spin";
++    public int Number => 100;
++
++    public (bool hit, string result) Spin()
++    {
++        Random random = new Random();
++        int spinChance = random.Next(1, 101);
++        bool willHit = spinChance <= 60;
++        return (willHit, willHit ? "Right Spin" : "\u001b[91mWops, too much power! The ball got in another persons lane..\u001b[0m");
++    }
++
++    public int CalculateScore(BowlingLane lane)
++    {
++        var pins = lane.GetPins();
++        return pins.Count(p => p.X > 1) * 3;
++    }
++}
++
++public class ThrowHandler
++{
++    public int PerformThrow(string name, IThrow power, BowlingLane lane)
++    {
++        Console.WriteLine($"{name} is throwing with {power.Name} Power and {power.Strategy.Name}!");
++        
++        var (hit, result) = power.Strategy.Spin();
++        if (!hit)
++        {
++            Console.WriteLine(result);
++            return 0;
++        }
++
++        int pinsDown = lane.MakeThrow(power.Number, power.Strategy.Number);
++        Console.WriteLine($"Pins down this throw: {pinsDown}");
++        return pinsDown;
++    }
++}
