@@ -1,25 +1,14 @@
 # Set default behavior to automatically normalize line endings
 * text=auto eol=lf
 
-# Force batch scripts to always use CRLF line endings
-*.{cmd,[cC][mM][dD]} text eol=crlf
-*.{bat,[bB][aA][tT]} text eol=crlf
-
-# Force bash scripts to always use LF line endings
-*.sh text eol=lf
-
-# Source code
-*.cs text diff=csharp
-*.cshtml text diff=html
-*.csx text diff=csharp
+# Visual Studio solution files always CRLF
 *.sln text eol=crlf
 *.csproj text eol=crlf
 
-# Documentation
-*.md text diff=markdown
-*.txt text
-*.json text
+# C# files always LF
+*.cs text eol=lf diff=csharp
 
-# Git config
-.gitattributes text
-.gitignore text 
+# Config files always LF
+*.json text eol=lf
+*.gitignore text eol=lf
+*.gitattributes text eol=lf 
