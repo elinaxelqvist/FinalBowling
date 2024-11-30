@@ -20,33 +20,25 @@ public class ComputerPlayer
     public int PerformThrow(BowlingLane lane)
     {
         var pins = lane.GetPins();
-        IStrategy strategy;
-     
-        if (pins.Count() < 10)
-        {
-            do
-            {
-                strategy = random.Next(1, 4) switch
-                {
-                    1 => new LeftHandSpin(),
-                    2 => new SuperSpin(),
-                    _ => new RightHandSpin()
-                };
-            } while (strategy.GetType() == PowerType?.Strategy?.GetType());
-        }
-        else
-        {
-            strategy = random.Next(1, 4) switch
-            {
-                1 => new LeftHandSpin(),
-                2 => new SuperSpin(),
-                _ => new RightHandSpin()
-            };
-        }
         
-        PowerType = random.Next(1, 3) == 1
-            ? new WeakPower(strategy)
-            : new StrongPower(strategy);
+        // Analysera kägelpositioner
+        int leftPins = pins.Count(p => p.X < 2);
+        int rightPins = pins.Count(p => p.X > 1);
+        int backPins = pins.Count(p => p.Y == 3);
+        
+        // Välj strategi baserat på kägelpositioner
+        IStrategy strategy = (leftPins, rightPins, backPins) switch
+        {
+            var (l, r, b) when b >= 2 => new SuperSpin(),      // Många käglor bak -> SuperSpin
+            var (l, r, _) when l > r => new LeftHandSpin(),    // Fler käglor vänster -> LeftHandSpin
+            var (l, r, _) when r > l => new RightHandSpin(),   // Fler käglor höger -> RightHandSpin
+            _ => new SuperSpin()                               // Default om jämnt fördelat
+        };
+
+        // Välj power baserat på antal kvarvarande käglor
+        PowerType = pins.Count() <= 5 
+            ? new WeakPower(strategy)    // Få käglor -> Weak för bättre kontroll
+            : new StrongPower(strategy); // Många käglor -> Strong för maximal effekt
 
         return throwHandler.PerformThrow(Name, PowerType, lane);
     }
